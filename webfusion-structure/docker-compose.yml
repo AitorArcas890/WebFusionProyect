@@ -1,0 +1,50 @@
+services:
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: wppass
+    volumes:
+      - db_data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:latest
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: wppass
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+
+  git-sync:
+    image: alpine/git
+    restart: "no"
+    volumes:
+      - wp_data:/wordpress
+    entrypoint: >
+      sh -c "
+        echo '>>> Clonando o actualizando el repositorio' &&
+        if [ -d /tmp/repo/.git ]; then
+          cd /tmp/repo && git pull;
+        else
+          git clone https://github.com/AitorArcas890/WebFusionProyect.git /tmp/repo;
+        fi &&
+        echo '>>> Copiando los archivos PHP a WordPress' &&
+        mkdir -p /wordpress/wp-content/themes/webfusion &&
+        cp -r /tmp/repo/wordpress-theme/. /wordpress/wp-content/themes/webfusion/ &&
+        echo '>>> Listo!'
+      "
+
+volumes:
+  db_data:
+  wp_data:
